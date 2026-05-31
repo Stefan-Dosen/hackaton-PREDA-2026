@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WineMonitor Dashboard</title>
+
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="./assets/icons/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <a class="logo" href="index.html">
+            <i class="fa-solid fa-wine-bottle"></i>
+            <span class="logo-text">WineMonitor</span>
+        </a>
+    </div>
+</aside>
+
+<main class="main-content">
+
+    <div class="top-bar">
+        <h3> Wine Fermentation Dashboard</h3>
+    </div>
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+    <a class="logo" href="index.html">
+        <i class="fa-solid fa-wine-bottle"></i>
+        <span class="logo-text">WineMonitor</span>
+    </a>
+</div>
+
+    <ul class="nav-menu">
+        <li class="nav-item">
+            <a href="index.html" class="nav-link">
+                <i class="bi bi-grid-fill"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="analytics.html" class="nav-link active">
+                <i class="bi bi-bar-chart-fill"></i>
+                <span>Analytics</span>
+            </a>
+        </li>
+    </ul>
+</aside>
+
+
+    <!-- STATS -->
+    <div class="dashboard-content">
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+                <div class="stat-value" id="temperature">0 °C</div>
+                <div class="stat-label">Temperature</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value" id="distance">0 cm</div>
+                <div class="stat-label">Liquid Level</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value" id="mq3">0</div>
+                <div class="stat-label">Alcohol Vapor</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value" id="mq2">0</div>
+                <div class="stat-label">Fermentation Gas</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value" id="rain">0</div>
+                <div class="stat-label">Moisture Sensor</div>
+            </div>
+
+        </div>
+
+        <!-- LIVE CHART -->
+        <div class="chart-card" style="margin-top:20px;">
+            <h4>Live Fermentation Data (Last 20s)</h4>
+            <canvas id="liveChart"></canvas>
+        </div>
+
+    </div>
+</main>
+
+<!-- SCRIPT -->
+<script>
+
+const API_URL = "http://10.203.150.54:5000/api/data";
+
+const MAX_POINTS = 10;
+
+let labels = [];
+let tempData = [];
+let mq2Data = [];
+let mq3Data = [];
+let rainData = [];
+
+const ctx = document.getElementById('liveChart').getContext('2d');
+
+const liveChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Temperature (°C)',
+                data: tempData,
+                borderColor: 'red',
+                tension: 0.3
+            },
+            {
+                label: 'Fermentation Gas (MQ2)',
+                data: mq2Data,
+                borderColor: 'blue',
+                tension: 0.3
+            },
+            {
+                label: 'Alcohol Vapor (MQ3)',
+                data: mq3Data,
+                borderColor: 'green',
+                tension: 0.3
+            },
+            {
+                label: 'Moisture',
+                data: rainData,
+                borderColor: 'gray',
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        animation: false,
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+function addPoint(label, temp, mq2, mq3, rain) {
+
+    labels.push(label);
+    tempData.push(temp);
+    mq2Data.push(mq2);
+    mq3Data.push(mq3);
+    rainData.push(rain);
+
+    if (labels.length > MAX_POINTS) {
+        labels.shift();
+        tempData.shift();
+        mq2Data.shift();
+        mq3Data.shift();
+        rainData.shift();
+    }
+
+    liveChart.update();
+}
+
+async function updateDashboard() {
+
+    try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+
+        document.getElementById('temperature').textContent = "26.0 °C";
+        document.getElementById('distance').textContent = data.distance + " cm";
+        document.getElementById('mq3').textContent = data.mq3 ;
+        document.getElementById('mq2').textContent = data.mq2 ;
+        document.getElementById('rain').textContent = data.rain;
+
+        const time = new Date().toLocaleTimeString();
+
+        addPoint(time,
+            data.temperature,
+            data.mq2,
+            data.mq3,
+            data.rain
+        );
+
+    } catch (err) {
+        console.log("API error:", err);
+    }
+}
+
+setInterval(updateDashboard, 2000);
+updateDashboard();
+
+</script>
+
+</body>
+</html>

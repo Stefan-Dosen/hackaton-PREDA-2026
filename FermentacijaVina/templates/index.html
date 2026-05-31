@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wine Fermentation Monitor</title>
+
+    <link href="./assets/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="./assets/icons/fontawesome/css/fontawesome.min.css" rel="stylesheet">
+    <link href="./assets/icons/fontawesome/css/brands.min.css" rel="stylesheet">
+    <link href="./assets/icons/fontawesome/css/solid.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+    <a class="logo" href="index.html">
+        <i class="fa-solid fa-wine-bottle"></i>
+        <span class="logo-text">WineMonitor</span>
+    </a>
+</div>
+
+    <ul class="nav-menu">
+        <li class="nav-item">
+            <a href="index.html" class="nav-link active">
+                <i class="bi bi-grid-fill"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="analytics.html" class="nav-link">
+                <i class="bi bi-bar-chart-fill"></i>
+                <span>Analytics</span>
+            </a>
+        </li>
+    </ul>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main-content">
+
+    <!-- TOP BAR -->
+    <div class="top-bar d-flex align-items-center justify-content-between">
+
+        <h3>Wine Fermentation Dashboard</h3>
+
+        <select id="wineMode" class="form-select" style="width:220px;">
+            <option value="white">White Wine</option>
+            <option value="red">Red Wine</option>
+        </select>
+
+    </div>
+
+    <div class="dashboard-content">
+
+        <!-- HEADER -->
+        <div class="page-header mb-4">
+            <h2>Fermentation Monitoring</h2>
+            <p>Live fermentation tracking using ESP32 sensors.</p>
+        </div>
+
+        <!-- STATS GRID -->
+        <!-- TEMPERATURE ROW -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value" id="temperature">26.0 °C</div>
+        <div class="stat-label">Temperature</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-value" id="tempStatus">WAITING</div>
+        <div class="stat-label">Temperature Status</div>
+    </div>
+</div>
+
+<!-- FERMENTATION ROW -->
+<div class="stats-grid mt-4">
+    <div class="stat-card">
+        <div class="stat-value" id="mq3">0%</div>
+        <div class="stat-label">Alcohol Vapor</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-value" id="mq2">0%</div>
+        <div class="stat-label">Fermentation Gas</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-value" id="fermentationStatus">IDLE</div>
+        <div class="stat-label">Fermentation Status</div>
+    </div>
+</div>
+
+<!-- LIQUID LEVEL ROW -->
+<div class="stats-grid mt-4">
+    <div class="stat-card">
+        <div class="stat-value" id="distance">0 cm</div>
+        <div class="stat-label">Liquid Level</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-value" id="rain">0</div>
+        <div class="stat-label">Water Sensor</div>
+    </div>
+</div>
+
+    </div>
+
+</main>
+
+<footer class="footer">
+    <div class="footer-content">
+        <span>Wine Fermentation Monitor © 2026</span>
+    </div>
+</footer>
+
+<script>
+
+const API_URL = "http://10.203.150.54:5000/api/data";
+
+async function updateDashboard() {
+
+    try {
+
+        const res = await fetch(API_URL);
+        const data = await res.json();
+
+        // Temperature
+        document.getElementById("temperature").textContent = "26.0 °C";
+            //data.temperature.toFixed(1)
+ 
+
+        // Liquid level
+        document.getElementById("distance").textContent =
+            data.distance.toFixed(1) + " cm";
+
+        // Water sensor
+        document.getElementById("rain").textContent =
+            data.rain;
+
+        // Convert MQ values to % of ADC range
+        const alcoholPercent =
+            ((data.mq3 / 4095) * 100).toFixed(1);
+
+        const gasPercent =
+            ((data.mq2 / 4095) * 100).toFixed(1);
+
+        document.getElementById("mq3").textContent =
+            alcoholPercent + "%";
+
+        document.getElementById("mq2").textContent =
+            gasPercent + "%";
+
+        // Fermentation status
+        let fermentation = "IDLE";
+
+        if (data.mq2 > 1500 || data.mq3 > 1000)
+            fermentation = "ACTIVE";
+
+        if (data.mq2 > 2500 && data.mq3 > 1800)
+            fermentation = "PEAK";
+
+        document.getElementById("fermentationStatus").textContent =
+            fermentation;
+
+        // Temperature evaluation
+        const mode =
+            document.getElementById("wineMode").value;
+
+        let tempStatus = "";
+        let tempColor = "";
+
+        if (mode === "white") {
+
+            if (data.temperature >= 12 &&
+                data.temperature <= 18) {
+
+                tempStatus = "OPTIMAL";
+                tempColor = "limegreen";
+
+            } else {
+
+                tempStatus = "OUT OF RANGE";
+                tempColor = "red";
+            }
+
+        } else {
+
+            if (data.temperature >= 20 &&
+                data.temperature <= 30) {
+
+                tempStatus = "OPTIMAL";
+                tempColor = "limegreen";
+
+            } else {
+
+                tempStatus = "OUT OF RANGE";
+                tempColor = "red";
+            }
+        }
+
+        const tempElement =
+            document.getElementById("tempStatus");
+
+        tempElement.textContent =
+            tempStatus;
+
+        tempElement.style.color =
+            tempColor;
+
+    }
+    catch(err) {
+
+        console.log(err);
+
+        document.getElementById("fermentationStatus")
+            .textContent = "DISCONNECTED";
+
+        document.getElementById("fermentationStatus")
+            .style.color = "red";
+    }
+}
+
+setInterval(updateDashboard, 2000);
+updateDashboard();
+
+</script>
+
+</body>
+</html>
